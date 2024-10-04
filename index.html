@@ -157,9 +157,10 @@
 
             // Clic en el mapa para agregar coordenadas
             map.on('click', function(e) {
-                const { lat, lng } = e.latlng;
-                document.getElementById('latitud').value = lat.toFixed(6);
-                document.getElementById('longitud').value = lng.toFixed(6);
+                const lat = e.latlng.lat.toFixed(6);
+                const lng = e.latlng.lng.toFixed(6);
+                document.getElementById('latitud').value = lat;
+                document.getElementById('longitud').value = lng;
             });
 
             function agregarSitioTabla(sitio) {
