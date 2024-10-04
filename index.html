@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Coordenadas Geográficas</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        #map {
+            height: 400px;
+            margin-top: 20px;
+        }
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn-delete:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Registro de Coordenadas Geográficas</h1>
+        
+        <form id="coordinateForm">
+            <label for="nombre">Nombre del Sitio:</label>
+            <input type="text" id="nombre" required>
+
+            <label for="latitud">Latitud:</label>
+            <input type="text" id="latitud" readonly>
+
+            <label for="longitud">Longitud:</label>
+            <input type="text" id="longitud" readonly>
+
+            <button type="button" id="getCoordinatesButton">Obtener Coordenadas</button>
+            <button type="submit">Guardar Sitio</button>
+        </form>
+
+        <table id="coordinatesTable">
+            <thead>
+                <tr>
+                    <th>Nombre del Sitio</th>
+                    <th>Latitud</th>
+                    <th>Longitud</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <!-- Mapa -->
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const coordinatesTable = document.getElementById('coordinatesTable').getElementsByTagName('tbody')[0];
+            let sitios = JSON.parse(localStorage.getItem('sitios')) || [];
+
+            // Inicializar mapa con Leaflet.js
+            const map = L.map('map').setView([0, 0], 2); // Centramos el mapa en coordenadas [0, 0] y zoom 2
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Cargar sitios existentes
+            sitios.forEach(sitio => agregarSitioTabla(sitio));
+
+            // Obtener coordenadas del navegador
+            document.getElementById('getCoordinatesButton').addEventListener('click', () => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            document.getElementById('latitud').value = position.coords.latitude;
+                            document.getElementById('longitud').value = position.coords.longitude;
+
+                            // Centrar el mapa en la ubicación actual
+                            map.setView([position.coords.latitude, position.coords.longitude], 15);
+                        },
+                        (error) => {
+                            alert('No se pudo obtener las coordenadas: ' + error.message);
+                        }
+                    );
+                } else {
+                    alert('La geolocalización no es soportada por este navegador.');
+                }
+            });
+
+            // Guardar sitio
+            document.getElementById('coordinateForm').addEventListener('submit', event => {
+                event.preventDefault();
+
+                const nombre = document.getElementById('nombre').value;
+                const latitud = document.getElementById('latitud').value;
+                const longitud = document.getElementById('longitud').value;
+
+                if (!latitud || !longitud) {
+                    alert('Por favor, obtén las coordenadas antes de guardar.');
+                    return;
+                }
+
+                const nuevoSitio = { nombre, latitud, longitud };
+                sitios.push(nuevoSitio);
+
+                localStorage.setItem('sitios', JSON.stringify(sitios));
+                agregarSitioTabla(nuevoSitio);
+
+                // Centrar y agregar marcador en el mapa
+                const latLng = [parseFloat(latitud), parseFloat(longitud)];
+                L.marker(latLng).addTo(map).bindPopup(`<b>${nombre}</b><br>Lat: ${latitud}, Lng: ${longitud}`).openPopup();
+                map.setView(latLng, 15);
+
+                event.target.reset();
+            });
+
+            function agregarSitioTabla(sitio) {
+                const newRow = coordinatesTable.insertRow();
+                newRow.insertCell(0).textContent = sitio.nombre;
+                newRow.insertCell(1).textContent = sitio.latitud;
+                newRow.insertCell(2).textContent = sitio.longitud;
+
+                const actionsCell = newRow.insertCell(3);
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Eliminar';
+                deleteButton.classList.add('btn-delete');
+                deleteButton.onclick = () => eliminarSitio(sitio);
+                actionsCell.appendChild(deleteButton);
+
+                // Agregar marcador en el mapa para cada sitio cargado
+                const latLng = [parseFloat(sitio.latitud), parseFloat(sitio.longitud)];
+                L.marker(latLng).addTo(map).bindPopup(`<b>${sitio.nombre}</b><br>Lat: ${sitio.latitud}, Lng: ${sitio.longitud}`);
+            }
+
+            function eliminarSitio(sitio) {
+                sitios = sitios.filter(s => s !== sitio);
+                localStorage.setItem('sitios', JSON.stringify(sitios));
+                actualizarTabla();
+            }
+
+            function actualizarTabla() {
+                coordinatesTable.innerHTML = '';
+                sitios.forEach(sitio => agregarSitioTabla(sitio));
+            }
+        });
+    </script>
+</body>
+</html>
