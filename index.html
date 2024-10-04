@@ -155,6 +155,13 @@
                 event.target.reset();
             });
 
+            // Clic en el mapa para agregar coordenadas
+            map.on('click', function(e) {
+                const { lat, lng } = e.latlng;
+                document.getElementById('latitud').value = lat.toFixed(6);
+                document.getElementById('longitud').value = lng.toFixed(6);
+            });
+
             function agregarSitioTabla(sitio) {
                 const newRow = coordinatesTable.insertRow();
                 newRow.insertCell(0).textContent = sitio.nombre;
