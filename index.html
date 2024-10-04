@@ -133,6 +133,18 @@
                 }
             });
 
+            // Evento para agregar un marcador en el mapa y cargar las coordenadas al hacer clic en el mapa
+            map.on('click', function(e) {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+
+                document.getElementById('latitud').value = lat;
+                document.getElementById('longitud').value = lng;
+
+                // Centrar el mapa en la ubicación del clic
+                map.setView([lat, lng], 15);
+            });
+
             // Guardar sitio
             document.getElementById('coordinateForm').addEventListener('submit', event => {
                 event.preventDefault();
