@@ -77,6 +77,10 @@
             <button type="submit">Guardar Sitio</button>
         </form>
 
+        <!-- Campo de búsqueda -->
+        <label for="search">Buscar Sitio:</label>
+        <input type="text" id="search" placeholder="Ingresa el nombre del sitio...">
+
         <table id="coordinatesTable">
             <thead>
                 <tr>
@@ -97,6 +101,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const coordinatesTable = document.getElementById('coordinatesTable').getElementsByTagName('tbody')[0];
+            const searchInput = document.getElementById('search');
             let sitios = JSON.parse(localStorage.getItem('sitios')) || [];
 
             // Inicializar mapa con Leaflet.js
@@ -155,14 +160,7 @@
                 event.target.reset();
             });
 
-            // Clic en el mapa para agregar coordenadas
-            map.on('click', function(e) {
-                const lat = e.latlng.lat.toFixed(6);
-                const lng = e.latlng.lng.toFixed(6);
-                document.getElementById('latitud').value = lat;
-                document.getElementById('longitud').value = lng;
-            });
-
+            // Función para agregar un sitio a la tabla
             function agregarSitioTabla(sitio) {
                 const newRow = coordinatesTable.insertRow();
                 newRow.insertCell(0).textContent = sitio.nombre;
@@ -181,16 +179,26 @@
                 L.marker(latLng).addTo(map).bindPopup(`<b>${sitio.nombre}</b><br>Lat: ${sitio.latitud}, Lng: ${sitio.longitud}`);
             }
 
+            // Función para eliminar un sitio
             function eliminarSitio(sitio) {
                 sitios = sitios.filter(s => s !== sitio);
                 localStorage.setItem('sitios', JSON.stringify(sitios));
                 actualizarTabla();
             }
 
+            // Función para actualizar la tabla
             function actualizarTabla() {
                 coordinatesTable.innerHTML = '';
                 sitios.forEach(sitio => agregarSitioTabla(sitio));
             }
+
+            // Buscar sitios
+            searchInput.addEventListener('input', () => {
+                const searchValue = searchInput.value.toLowerCase();
+                const filteredSitios = sitios.filter(sitio => sitio.nombre.toLowerCase().includes(searchValue));
+                coordinatesTable.innerHTML = ''; // Limpiar la tabla
+                filteredSitios.forEach(sitio => agregarSitioTabla(sitio)); // Agregar los sitios filtrados
+            });
         });
     </script>
 </body>
