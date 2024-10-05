@@ -99,20 +99,35 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-    <script>
+    <script type="module">
+        // Importar Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
+        import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js";
+
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyB0oZvQ_Bk7gM8mxOkGCNJHzQVkqLbUdFw",
+            authDomain: "mapa-de-clientes-8e803.firebaseapp.com",
+            projectId: "mapa-de-clientes-8e803",
+            storageBucket: "mapa-de-clientes-8e803.appspot.com",
+            messagingSenderId: "84986809151",
+            appId: "1:84986809151:web:ba345547ef6a319ecbe18a",
+            measurementId: "G-32KRR26R2S"
+        };
+
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
         document.addEventListener('DOMContentLoaded', () => {
             const coordinatesTable = document.getElementById('coordinatesTable').getElementsByTagName('tbody')[0];
             const searchInput = document.getElementById('search');
-            let sitios = JSON.parse(localStorage.getItem('sitios')) || [];
 
             // Inicializar mapa con Leaflet.js
             const map = L.map('map').setView([0, 0], 2); // Centramos el mapa en coordenadas [0, 0] y zoom 2
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
-
-            // Cargar sitios existentes
-            sitios.forEach(sitio => agregarSitioTabla(sitio));
 
             // Obtener coordenadas del navegador
             document.getElementById('getCoordinatesButton').addEventListener('click', () => {
@@ -146,7 +161,7 @@
                 map.setView([lat, lng], 15);
             });
 
-            // Guardar sitio
+            // Guardar sitio en Firebase
             document.getElementById('coordinateForm').addEventListener('submit', event => {
                 event.preventDefault();
 
@@ -160,17 +175,18 @@
                 }
 
                 const nuevoSitio = { nombre, latitud, longitud };
-                sitios.push(nuevoSitio);
 
-                localStorage.setItem('sitios', JSON.stringify(sitios));
+                // Guardar en Firebase Database
+                push(ref(database, 'sitios'), nuevoSitio);  // Guardar en Firebase
+
                 agregarSitioTabla(nuevoSitio);
 
-                // Centrar y agregar marcador en el mapa
+                // Agregar marcador en el mapa
                 const latLng = [parseFloat(latitud), parseFloat(longitud)];
                 L.marker(latLng).addTo(map).bindPopup(`<b>${nombre}</b><br>Lat: ${latitud}, Lng: ${longitud}`).openPopup();
                 map.setView(latLng, 15);
 
-                event.target.reset();
+                event.target.reset(); // Limpiar formulario
             });
 
             // Función para agregar un sitio a la tabla
@@ -194,54 +210,24 @@
                 mapsLink.href = `https://www.google.com/maps/search/?api=1&query=${sitio.latitud},${sitio.longitud}`;
                 mapsLink.target = '_blank'; // Abrir en una nueva pestaña
                 mapsCell.appendChild(mapsLink);
-
-                // Agregar marcador en el mapa para cada sitio cargado
-                const latLng = [parseFloat(sitio.latitud), parseFloat(sitio.longitud)];
-                L.marker(latLng).addTo(map).bindPopup(`<b>${sitio.nombre}</b><br>Lat: ${sitio.latitud}, Lng: ${sitio.longitud}`);
             }
+
+            // Cargar sitios de Firebase al iniciar la página
+            onValue(ref(database, 'sitios'), (snapshot) => {
+                const data = snapshot.val();
+                coordinatesTable.innerHTML = '';  // Limpiar la tabla
+                for (let id in data) {
+                    agregarSitioTabla(data[id]);
+                }
+            });
 
             // Función para eliminar un sitio
             function eliminarSitio(sitio) {
                 sitios = sitios.filter(s => s !== sitio);
-                localStorage.setItem('sitios', JSON.stringify(sitios));
                 actualizarTabla();
-            }
-
-            // Función para actualizar la tabla
-            function actualizarTabla() {
-                coordinatesTable.innerHTML = '';
-                sitios.forEach(sitio => agregarSitioTabla(sitio));
             }
 
             // Buscar sitios
             searchInput.addEventListener('input', () => {
                 const searchValue = searchInput.value.toLowerCase();
-                const filteredSitios = sitios.filter(sitio => sitio.nombre.toLowerCase().includes(searchValue));
-                coordinatesTable.innerHTML = ''; // Limpiar la tabla
-                filteredSitios.forEach(sitio => agregarSitioTabla(sitio)); // Agregar los sitios filtrados
-            });
-        });
-    </script>
-    // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyB0oZvQ_Bk7gM8mxOkGCNJHzQVkqLbUdFw",
-  authDomain: "mapa-de-clientes-8e803.firebaseapp.com",
-  projectId: "mapa-de-clientes-8e803",
-  storageBucket: "mapa-de-clientes-8e803.appspot.com",
-  messagingSenderId: "84986809151",
-  appId: "1:84986809151:web:ba345547ef6a319ecbe18a",
-  measurementId: "G-32KRR26R2S"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-</body>
-</html>
+                const filtered
