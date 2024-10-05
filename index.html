@@ -197,6 +197,17 @@
                 });
             });
 
+            // Cargar sitios desde Firebase cuando la página se carga
+            onValue(ref(database, 'sitios'), (snapshot) => {
+                const data = snapshot.val();
+                coordinatesTable.innerHTML = ''; // Limpiar la tabla
+                if (data) { // Verificar que haya datos
+                    for (let id in data) {
+                        agregarSitioTabla(data[id]);
+                    }
+                }
+            });
+
             // Función para agregar un sitio a la tabla
             function agregarSitioTabla(sitio) {
                 const newRow = coordinatesTable.insertRow();
@@ -216,26 +227,24 @@
                 const mapsLink = document.createElement('a');
                 mapsLink.textContent = 'Ver en Google Maps';
                 mapsLink.href = `https://www.google.com/maps/search/?api=1&query=${sitio.latitud},${sitio.longitud}`;
-                mapsLink.target = '_blank'; // Abrir en nueva pestaña
+                mapsLink.target = '_blank'; // Abrir en una nueva pestaña
                 mapsCell.appendChild(mapsLink);
             }
-
-            // Cargar sitios desde Firebase cuando la página se carga
-            onValue(ref(database, 'sitios'), (snapshot) => {
-                const data = snapshot.val();
-                coordinatesTable.innerHTML = ''; // Limpiar la tabla
-                for (let id in data) {
-                    agregarSitioTabla(data[id]);
-                }
-            });
 
             // Función para eliminar un sitio
             function eliminarSitio(sitio) {
                 const sitiosRef = ref(database, 'sitios');
-                remove(sitiosRef).then(() => {
-                    console.log("Sitio eliminado correctamente.");
-                }).catch(error => {
-                    console.error("Error al eliminar el sitio:", error);
+                // Filtrar los sitios para encontrar el que se va a eliminar
+                onValue(sitiosRef, (snapshot) => {
+                    const data = snapshot.val();
+                    const keyToRemove = Object.keys(data).find(key => data[key].nombre === sitio.nombre);
+                    if (keyToRemove) {
+                        remove(ref(database, 'sitios/' + keyToRemove)).then(() => {
+                            console.log("Sitio eliminado correctamente.");
+                        }).catch(error => {
+                            console.error("Error al eliminar el sitio:", error);
+                        });
+                    }
                 });
             }
 
