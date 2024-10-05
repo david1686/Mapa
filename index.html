@@ -48,6 +48,7 @@
         }
         #map {
             height: 400px;
+            width: 100%;
             margin-top: 20px;
         }
         .btn-delete {
@@ -127,6 +128,11 @@
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
+
+            // Solucionar problema de redimensionado del mapa
+            setTimeout(() => {
+                map.invalidateSize(); // Refrescar el tamaño del mapa para asegurar que se renderice
+            }, 100);
 
             // Obtener coordenadas del navegador
             document.getElementById('getCoordinatesButton').addEventListener('click', () => {
@@ -234,4 +240,20 @@
             }
 
             // Buscar sitios
-            searchInput.add
+            searchInput.addEventListener('input', () => {
+                const searchTerm = searchInput.value.toLowerCase();
+                const rows = coordinatesTable.getElementsByTagName('tr');
+
+                for (let row of rows) {
+                    const siteName = row.getElementsByTagName('td')[0].textContent.toLowerCase();
+                    if (siteName.includes(searchTerm)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
