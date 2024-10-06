@@ -125,7 +125,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             const coordinatesTable = document.getElementById('coordinatesTable').getElementsByTagName('tbody')[0];
             const searchInput = document.getElementById('search');
-            const map = L.map('map').setView([0, 0], 2); // Mapa centrado
+//            const map = L.map('map').setView([0, 0], 2); // Mapa centrado
+            const map = L.map('map').setView([9.7489, -83.7534], 8); // Centrando en Costa Rica con zoom 8
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
