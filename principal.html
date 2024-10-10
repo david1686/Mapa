@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Coordenadas Geográficas</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" />
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        form {
+            margin-top: 20px;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 12px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #ccc;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            font-size: 16px;
+        }
+
+        th {
+            background-color: #f8f8f8;
+        }
+
+        #map {
+            height: 400px;
+            width: 100%;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+            border-radius: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+
+        .btn-delete:hover {
+            background-color: #c82333;
+        }
+
+        label {
+            font-size: 16px;
+            font-weight: 500;
+            margin-top: 10px;
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 600px) {
+            button {
+                width: 100%;
+                margin-top: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Registro de Coordenadas Geográficas</h1>
+
+        <!-- Mapa -->
+        <div id="map"></div>
+
+        <form id="coordinateForm">
+            <div class="form-group">
+                <label for="nombre">Nombre del Sitio:</label>
+                <input type="text" id="nombre" required>
+            </div>
+
+            <div class="form-group">
+                <label for="latitud">Latitud:</label>
+                <input type="text" id="latitud" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="longitud">Longitud:</label>
+                <input type="text" id="longitud" readonly>
+            </div>
+
+            <button type="button" id="getCoordinatesButton">Obtener Coordenadas</button>
+            <button type="submit">Guardar Sitio</button>
+        </form>
+
+        <!-- Campo de búsqueda -->
+        <div class="form-group">
+            <label for="search">Buscar Sitio:</label>
+            <input type="text" id="search" placeholder="Ingresa el nombre del sitio...">
+        </div>
+
+        <table id="coordinatesTable">
+            <thead>
+                <tr>
+                    <th>Nombre del Sitio</th>
+                    <th>Latitud</th>
+                    <th>Longitud</th>
+                    <th>Acciones</th>
+                    <th>Mapa</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
+        import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB0oZvQ_Bk7gM8mxOkGCNJHzQVkqLbUdFw",
+            authDomain: "mapa-de-clientes-8e803.firebaseapp.com",
+            projectId: "mapa-de-clientes-8e803",
+            storageBucket: "mapa-de-clientes-8e803.appspot.com",
+            messagingSenderId: "84986809151",
+            appId: "1:84986809151:web:ba345547ef6a319ecbe18a",
+            measurementId: "G-32KRR26R2S"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const coordinatesTable = document.getElementById('coordinatesTable').getElementsByTagName('tbody')[0];
+            const searchInput = document.getElementById('search');
+            const map = L.map('map').setView([9.7489, -83.7534], 8);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 100);
+
+            document.getElementById('getCoordinatesButton').addEventListener('click', () => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            document.getElementById('latitud').value = position.coords.latitude;
+                            document.getElementById('longitud').value = position.coords.longitude;
+                            map.setView([position.coords.latitude, position.coords.longitude], 15);
+                        },
+                        (error) => {
+                            alert('No se pudo obtener las coordenadas: ' + error.message);
+                        }
+                    );
+                } else {
+                    alert('La geolocalización no es soportada por este navegador.');
+                }
+            });
+
+            map.on('click', function (e) {
+                const lat = e.latlng.lat;
+                const lng = e.latlng.lng;
+
+                document.getElementById('latitud').value = lat;
+                document.getElementById('longitud').value = lng;
+                map.setView([lat, lng], 15);
+            });
+
+            document.getElementById('coordinateForm').addEventListener('submit', event => {
+                event.preventDefault();
+
+                const nombre = document.getElementById('nombre').value;
+                const latitud = document.getElementById('latitud').value;
+                const longitud = document.getElementById('longitud').value;
+
+                if (!latitud || !longitud) {
+                    alert('Por favor, obtén las coordenadas antes de guardar.');
+                    return;
+                }
+
+                const nuevoSitio = { nombre, latitud, longitud };
+                push(ref(database, 'sitios'), nuevoSitio).then(() => {
+                    agregarSitioTabla(nuevoSitio);
+                    const latLng = [parseFloat(latitud), parseFloat(longitud)];
+                    L.marker(latLng).addTo(map).bindPopup(`<b>${nombre}</b><br>Lat: ${latitud}, Lng: ${longitud}`).openPopup();
+                    map.setView(latLng, 15);
+                    event.target.reset();
+                }).catch(error => {
+                    console.error("Error al guardar en Firebase:", error);
+                });
+            });
+
+            onValue(ref(database, 'sitios'), (snapshot) => {
+                const data = snapshot.val();
+                coordinatesTable.innerHTML = '';
+                if (data) {
+                    for (let id in data) {
+                        agregarSitioTabla(data[id]);
+                    }
+                }
+            });
+
+            function agregarSitioTabla(sitio) {
+                const newRow = coordinatesTable.insertRow();
+                newRow.insertCell(0).textContent = sitio.nombre;
+                newRow.insertCell(1).textContent = sitio.latitud;
+                newRow.insertCell(2).textContent = sitio.longitud;
+
+                const actionsCell = newRow.insertCell(3);
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Eliminar';
+                deleteButton.classList.add('btn-delete');
+                deleteButton.onclick = () => eliminarSitio(sitio);
+                actionsCell.appendChild(deleteButton);
+
+                const mapsCell = newRow.insertCell(4);
+                const mapsLink = document.createElement('a');
+                mapsLink.textContent = 'Ver en Google Maps';
+                mapsLink.href = `https://www.google.com/maps/search/?api=1&query=${sitio.latitud},${sitio.longitud}`;
+                mapsLink.target = '_blank';
+                mapsCell.appendChild(mapsLink);
+            }
+
+            function eliminarSitio(sitio) {
+                const sitiosRef = ref(database, 'sitios');
+                onValue(sitiosRef, (snapshot) => {
+                    const data = snapshot.val();
+                    const keyToRemove = Object.keys(data).find(key => data[key].nombre === sitio.nombre);
+                    if (keyToRemove) {
+                        remove(ref(database, 'sitios/' + keyToRemove)).then(() => {
+                            console.log("Sitio eliminado correctamente.");
+                        }).catch(error => {
+                            console.error("Error al eliminar el sitio:", error);
+                        });
+                    }
+                });
+            }
+
+            searchInput.addEventListener('input', () => {
+                const searchTerm = searchInput.value.toLowerCase();
+                const rows = coordinatesTable.getElementsByTagName('tr');
+
+                for (let row of rows) {
+                    const siteName = row.getElementsByTagName('td')[0].textContent.toLowerCase();
+                    if (siteName.includes(searchTerm)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
